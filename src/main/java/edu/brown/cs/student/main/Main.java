@@ -6,10 +6,16 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import freemarker.template.Configuration;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -62,6 +68,8 @@ public final class Main {
     // TODO: create a call to Spark.post to make a POST request to a URL which
     // will handle getting matchmaking results for the input
     // It should only take in the route and a new ResultsHandler
+    Spark.post("/match", new ResultsHandler());
+
     Spark.options("/*", (request, response) -> {
       String accessControlRequestHeaders = request.headers("Access-Control-Request-Headers");
       if (accessControlRequestHeaders != null) {
@@ -110,14 +118,36 @@ public final class Main {
       // TODO: Get JSONObject from req and use it to get the value of the sun, moon,
       // and rising
       // for generating matches
+      JSONObject reqJson = null;
+      System.out.println(req.body());
+      try {
+        reqJson = new JSONObject(req.body());
+      } catch (JSONException e) {
+        e.printStackTrace();
+        return "ERROR: Invalid JSON Body";
+      }
 
       // TODO: use the MatchMaker.makeMatches method to get matches
+      List<String> output;
+      try {
+        output = MatchMaker.makeMatches(
+          reqJson.getString("sun"),
+          reqJson.getString("moon"),
+          reqJson.getString("rising")
+        );
+      } catch (JSONException e) {
+        e.printStackTrace();
+        return "ERROR: Null response";
+      }
 
       // TODO: create an immutable map using the matches
+      ImmutableMap<String, List<String>> immutableMap = ImmutableMap.<String, List<String>>builder()
+        .put("matches", output)
+        .build();
 
       // TODO: return a json of the suggestions (HINT: use GSON.toJson())
       Gson GSON = new Gson();
-      return null;
+      return GSON.toJson(immutableMap);
     }
   }
 }
